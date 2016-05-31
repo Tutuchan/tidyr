@@ -97,6 +97,7 @@ unnest_.data.frame <- function(data, unnest_cols, .drop = NA, .id = NULL,
     stop("All nested columns must have the same number of elements.",
       call. = FALSE)
   }
+  names_out <- setNames(nm = as.list(names(data)))
 
   types <- vapply(nested, list_col_type, character(1))
   nest_types <- split.default(nested, types)
@@ -116,10 +117,12 @@ unnest_.data.frame <- function(data, unnest_cols, .drop = NA, .id = NULL,
     unnested_dataframe <- Map(function(name, df) {
       setNames(df, paste(name, names(df), sep = .sep))
     }, names(unnested_dataframe), unnested_dataframe)
-  }
-  if (length(unnested_dataframe) > 0)
-    unnested_dataframe <- dplyr::bind_cols(unnested_dataframe)
 
+  }
+  if (length(unnested_dataframe) > 0) {
+    names_out[names(unnested_dataframe)] <- lapply(unnested_dataframe, names)
+    unnested_dataframe <- dplyr::bind_cols(unnested_dataframe)
+  }
   # Keep list columns by default, only if the rows aren't expanded
   if (identical(.drop, NA)) {
     n_in <- nrow(data)
@@ -136,6 +139,14 @@ unnest_.data.frame <- function(data, unnest_cols, .drop = NA, .id = NULL,
 
   rest <- data[rep(1:nrow(data), n[[1]]), group_cols, drop = FALSE]
 
+  names_out <- names_out[names(names_out) %in% c(names(nested), group_cols)]
+  names_out <- unlist(names_out, use.names = FALSE)
+  if (!is.null(.id)) names_out <- c(names_out, .id)
+
+  # print(dplyr::bind_cols(compact(list(rest, unnested_atomic, unnested_dataframe))))
+  # print(names_out)
+
+  # dplyr::select_(dplyr::bind_cols(compact(list(rest, unnested_atomic, unnested_dataframe))), .dots = names_out)
   dplyr::bind_cols(compact(list(rest, unnested_atomic, unnested_dataframe)))
 }
 
